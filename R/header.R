@@ -81,7 +81,7 @@ headerServer <- function(id, store=NULL) {
     
     # set uid to reactiveValues
     shinyjs::runjs(sprintf("set_shiny_uid('%s')", ns("uid")))
-    #shinyjs::hide('cancel_home')
+    
     observeEvent(input$uid, {
       # create a inputfile for the current user based on uid
       rv$input_file <-  reload_config(input$uid) 
@@ -105,7 +105,6 @@ headerServer <- function(id, store=NULL) {
     })
     
     observeEvent(input$run_simulation, {
-     
       rv$input_file <-  reload_config(input$uid)
       rv$scenarios_input <- first(read_excel(rv$input_file, sheet = rv$scenarios_sheet))
       rv$show_region <- TRUE
@@ -118,13 +117,11 @@ headerServer <- function(id, store=NULL) {
     
     
     observeEvent(input$run_name_checked, {
-     
       show_no_result <- FALSE
       if (!is.null(input$prev_run_names)){
         # update the folder_df when requested
         rv$folder_df <- get_result_folders_dt(input$prev_run_names)
         # Render the folder table using DT
-        
         output$dt_select_prev_config <- renderDT({
           datatable(rv$folder_df, selection = 'single')
         })
@@ -197,12 +194,12 @@ headerServer <- function(id, store=NULL) {
       }
     })
     
-    
     observeEvent(input$view_runs, {
       rv$sim_refresh <- TRUE
       updateNavbarPage(session, inputId = "header_options", selected = "View Previous Results")
     })
   })
+  
   runSimulationServer("sim1", return_event = switchToResultEvent, rv =rv, store = store)
   viewRunsServer("view_runs1", rv = rv, store = store)
 }

@@ -12,7 +12,7 @@ sim_tabs <- function(ns){
            ),
            fluidRow(
              column(6,
-                    numericInput(ns("start_year"), div(id=ns("info_start_year"), "Start Year ", bs_icon("question-circle")), 2020, min=2000, max=2040),
+                    numericInput(ns("start_year"), div(id=ns("info_start_year"), "Start Year ", bs_icon("question-circle")), 2022, min=2000, max=2040),
                     bsPopover(ns("info_start_year"), "Start year for simulation", placement = "top", options = list(container = "body")),
              ),
              column(6,
@@ -207,7 +207,6 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
     # Set sheet data based on input scenario
     observe({
       #if this is a new context i.e. no uid set
-      print("in run simulation observe")
       if (!is.null(rv$uid)) {
         rv$scenario_selected <- rv$scenarios_input$UniqueID
         rv$seasonality_sheet <- rv$scenarios_input$sheet_SeasonalityCurves
@@ -218,10 +217,7 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
         rv$pop_values <- read_excel(rv$input_file, sheet = rv$scenarios_input$sheet_PopValues)
         rv$cadreroles <- read_excel(rv$input_file, sheet="CadreRoles")
       }
-  
-   
       if(sim_pages[rv$page]=="Configuration"){
-        print("line 224 show region")
         if(!rv$show_region){
           isolate(updateSelectInput(session, "region", label = "Region (Unavailable)"))
           shinyjs::hide("region")
@@ -237,25 +233,24 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
     })
     
     observeEvent(rv$sim_refresh, {
-      print("refresh!!!")
-      isolate(updateSelectInput(session, "region", selected = "Select Region"))
+      print("DEBUG: refreshing simulation")
+      updateSelectInput(session, "region", selected = "Select Region")
+      rv$current_region = "Select Region"
       shinyjs::disable("optional_params")
       print(sim_pages)
       updateTabsetPanel(inputId = "simulation_steps", selected = sim_pages[1])
     })
-    observeEvent(rv$page, {
-      #if(rv$page=="refresh") {
-        #rv$page <- which(sim_pages == "Configuration")
-        #updateTabsetPanel(inputId = "simulation_steps", selected = sim_pages[rv$page])
-      #}
-    })
+    
     observeEvent(rv$show_region, {
       if(rv$show_region) {
         shinyjs::show("region")
         }
     })
+    
     # Reload optional data when region changes
     observeEvent(input$region, {
+      print(paste("rv_region", rv$current_region ))
+      print(paste("input$region", input$region))
       if (!is.null(input$region) &&  input$region != "" &&  input$region!=rv$current_region && input$region!="Select Region" ){
         # show warning
         showModal(
@@ -276,21 +271,15 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
     observeEvent(input$proceedRegionBtn, {
       removeModal()
       shinyjs::enable("optional_params")
-      print("proceedRegionButton clicked")
+      print("DEBUG: proceedRegionButton")
       rv$current_region <- input$region
       print(paste("Current Region:", rv$current_region))
       #write the input excel file with uid suffix to file
-      print("Reloading config file")
+      print("DEBUG: Reloading config file")
       reload_config(rv$uid, region_config_files[[rv$current_region]])
-      print("Reloaded config file")
-      print(paste("rv$input_file:", rv$input_file))
- 
+      print("DEBUG: Reloaded config file")
     
       rv$scenarios_input <- first(read_excel(rv$input_file, sheet = rv$scenarios_sheet))
-      print(paste("Scenarios sheet name:", rv$scenarios_sheet))
-      print("Debug: Scenarios sheet values")
-      print(rv$scenarios_input)
-      print(rv$scenarios_input$"sheet_TaskValues")
       # reload optional data
       rv$task_input <- read_excel(rv$input_file, sheet = rv$task_sheet)
       rv$seasonality_input <- read_excel(rv$input_file, sheet = rv$seasonality_sheet)
@@ -311,7 +300,6 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
       updateNumericInput(session, "hrh_utilization",
                          value = rv$scenarios_input$MaxUtilization*100)
     })
-   
     
     observeEvent(input$cancelRegionBtn, {
       removeModal()
@@ -361,16 +349,14 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
       else{
         rv$page <- rv$page + direction
       }
-      print(paste("rv$page:",rv$page  ))
-      print(paste("length(sim_pages):",length(sim_pages) ))
+      print(paste("DEBUG: rv$page:",rv$page  ))
       if (rv$page >0 & rv$page <= length(sim_pages)){
-        print(paste0("Select ", sim_pages[rv$page]))
         updateTabsetPanel(inputId = "simulation_steps", selected = sim_pages[rv$page])
       }
       
       if(sim_pages[rv$page]=="Input Validation"){
         if (!is.null(rv$pop_input)) {
-          print("sending plot command:")
+          print("DEBUG: sending plot command:")
           print(head(rv$pop_input))
           simpleplotServer("population-tab", get_population_pyramid_plot, rv)
           simpleplotServer("fertility-tab", get_fertility_rates_plot, rv)
@@ -390,7 +376,6 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
         rv$scenarios_input$MaxUtilization <- (input$hrh_utilization) /100.0
         rv$scenarios_input$DeliveryModel <- ifelse(is.null(rv$scenarios_input$DeliveryModel), "Basic", rv$scenarios_input$DeliveryModel)
         rv$region <- input$region
-        print(rv$scenarios_input)
       }
     }
     
@@ -529,7 +514,7 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
     
     observeEvent(input$preload_pop, {
       selected_file <- input$preload_pop
-      print("Getting Population File Preloaded")
+      print("DEBUG: Getting Population File Preloaded")
       if (!is.null(selected_file) & selected_file != "Choose") {
         actual_filename <- preload_pop_list[names(preload_pop_list) == selected_file]
         file_content <- read.csv(actual_filename, row.names = NULL) # assuming the file is a CSV
@@ -537,10 +522,8 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
       }
     })
    
-    
     ### handle sheet change saving
     observeEvent(input$saveValue, {
-  
       # Close the modal after saving
       removeModal()
       # print(paste0("value is ", head(rv$pop_input))) # Debugging
@@ -595,7 +578,7 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
         })
         
         
-        print("Saving Complete")
+        print("DEBUG: Saving Complete")
         if (rv$sim_triggered){
           # if this file saving is triggered by the simulation step, set sim_ready to continue simulation
           # session$sendCustomMessage("notify_handler", paste0("user config is saved to:", rv$input_file))
@@ -608,7 +591,6 @@ runSimulationServer <- function(id, return_event, rv, store = NULL) {
     ### handle Run simulation
     # estimate time
     observe({
-      
       rv$trial_num <- ifelse(is.null(input$num_trials), 0, input$num_trials)
       rv$num_tasks <- nrow(rv$task_input)
       rv$num_years <- rv$end_year - rv$start_year
