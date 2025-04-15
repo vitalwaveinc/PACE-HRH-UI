@@ -1,7 +1,7 @@
 cls
 setlocal
 @echo off
-SET VERSION=v2.0.6
+SET VERSION=v2.0.8
 
 REM Determine if this a git repository
 IF EXIST ".git" (
